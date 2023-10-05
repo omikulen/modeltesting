@@ -23,6 +23,9 @@ NuFITIH = {
 }
 
 def _h(hierarchy):
+    """
+Uniforms the hierarchy input.
+    """
     if hierarchy.lower() in ['normal', 'nh', 'n', 'no']:
         return 'n'
     elif hierarchy.lower() in ['inverse', 'ih', 'i', 'in']:
