@@ -9,7 +9,7 @@ setup(
     version='0.1',
     packages=find_packages(),    
     package_data={
-        'modeltesting.neutrinos': ['data/*.npy'],
+        'modeltesting.neutrinos': ['data/*.npy', 'data/*.txt'],
     },
     install_requires=requirements,
 )

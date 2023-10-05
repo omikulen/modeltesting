@@ -92,9 +92,6 @@ array([[0.6492186 , 0.99956093, 0.9675604 ],
         (np.linspace(0, 1, nupriors_data.shape[0]), 
          np.linspace(0, 1, nupriors_data.shape[1])), 
          nupriors_data, bounds_error=False, fill_value=0.0)
-    # def nupriors(xe, xmu):
-    #     return nupriors_data[int(xe*nupriors_data.shape[0]+1e-5), int(xmu*nupriors_data.shape[1]+1e-5)]
-    # func = np.vectorize(nupriors)
 
 
     def _(*args, grid = False):
@@ -115,69 +112,194 @@ array([[0.6492186 , 0.99956093, 0.9675604 ],
 
 
 
-
-
-def br(x:np.ndarray, data, observe_photons = True):
+def HNL_decaywidths(M:float):
     """
-Handles the extraction of branching ratios from the txt file
+Precomputed decay widths for HNLs with mass M in GeV.
+The data covers the range 0.1 GeV < M < 10 GeV.
+
+### Parameters
+    M (float): The mass of the HNL in GeV.
+
+### Returns
+    dict(str: (float, str))
+        Dictionary of pairs \{decay channel:(decay width in GeV , mixings)\} for the HNL with mass M. The mixings are given as a string of 'e', 'm', 't' for electron, muon, tau.
     """
-    if type(data) == str:
-        with open(data, 'r') as f:
-            for dw in f:
-                if ',' in dw:
-                    branching_data = dw.split(',')
-                else:
-                    branching_data = dw.split(' ')
-                data = np.array(branching_data, dtype=float)
-                break
-    elif type(data) in [list, np.ndarray]:
-        pass
-    else:
-        raise ValueError('data must be either a string or a list/np.ndarray')
+
+    path = resource_filename(__name__, f'data/decay_widths.txt')
+
+    # handle out-masses
+    if M < 0:
+        raise ValueError('Mass must be positive')
+
+    # go through the file to find the first line above the mass
+    # since I know that the grid is np.logspace(-1, 1, 200), I hard-code the index
+    # cause why not, I'm the boss here :D
+    rough_index = min(np.log10(M/0.1)*100-5, 195)
+    with open(path, 'r') as f:
+        for i, line in enumerate(f):
+            if i < rough_index:
+                continue
+            if line.startswith('#'):
+                continue
+            else:
+                if float(line[:5]) > M:
+                    break
+
+    # read the decay widths and renormalize them
+    decay_data = line.split(',')
+    decay_data = np.array(decay_data, dtype=float)*float(decay_data[0])**5/(392*np.pi**3*(246.22)**4)
+
+    output = {
+        '3nu': (decay_data[1], 'emt'),
+        'nuee(e)': (decay_data[2], 'e'),
+        'nuee(NC)': (decay_data[3], 'mt'),
+        'nuemu': (decay_data[4], 'em'),
+        'numumu(mu)': (decay_data[5], 'm'),
+        'numumu(NC)': (decay_data[6], 'et'),
+        'nuetau': (decay_data[7], 'et'),
+        'numutau': (decay_data[8], 'mt'),
+        'nutautau(tau)': (decay_data[9], 't'),
+        'nutautau(NC)': (decay_data[10], 'em'),
+        'nupi': (decay_data[11], 'emt'),
+        'epi': (decay_data[12], 'e'),
+        'mupi': (decay_data[13], 'm'),
+        'nupipi': (decay_data[14], 'emt'),
+        'epipi': (decay_data[15], 'e'),
+        'mupipi': (decay_data[16], 'm'),
+        'eK': (decay_data[17], 'e'),
+        'muK': (decay_data[18], 'm'),
+        'nueta': (decay_data[19], 'emt'),
+        'nuetaprime': (decay_data[20], 'emt'),
+        'nuomega': (decay_data[21], 'emt'),
+        'nuphi': (decay_data[22], 'emt'),
+        'nuqq': (decay_data[23], 'emt'),
+        'eqq': (decay_data[24], 'e'),
+        'muqq': (decay_data[25], 'm'),
+        'tauqq': (decay_data[26], 't')
+    }
+    return output
 
 
-    gamma_ehCC = data[1]
-    gamma_muhCC = data[2]
-    gamma_hNC = data[3]
-    gamma_hNCnoph = data[4]
-    gamma_emu = data[5]
+def HNL_branchings(M:float):
+    """
+Branching ratios for HNLs with mass M in GeV.
+
+### Parameters
+    M (float): The mass of the HNL in GeV.
+
+### Returns
+    function(xe, xmu) -> dict
+        function that takes the mixing angles and returns a dictionary of branching ratios. Accepts input formats func(xe, xmu); func([xe, xmu]); func(xe, xmu); func([xe, xmu, xtau]). 
+
+### Notes
+    The data covers mass range: 0.1 GeV < M < 10 GeV. Note that there are decays into both quarks and mesons, so the channels overlap. 
+    At masses M>2, semileptonic decay widths are computed by decays into quarks; at masses M<2 - by decays into mesons. Automatically renormalize xe, xmu, xtau to xe+xmu+xtau = 1, if all three parameters are given. 
     
-    gamma_see = data[6]
-    gamma_dee = data[7]
-    gamma_smumu = data[8]
-    gamma_dmumu = data[9]
-    gamma_inv = data[10]
-    xe, xmu = x
-    xtau = 1 - xe - xmu
-    Gamma_total = gamma_hNC + gamma_inv + gamma_ehCC*xe + gamma_muhCC*xmu 
-    Gamma_total += gamma_see*xe + gamma_dee*(xmu+xtau) + gamma_smumu*xmu + gamma_dmumu*(xe+xtau)
-    Gamma_total += gamma_emu*(xe+xmu)
+### Example Usage
+```python
+>>> br_1GeV = HNL_branchings(1.0)
+>>> br_1GeV(0.5, 0.1)
+    {'3nu': 0.16977063986554167,
+    'nuemu': 0.09381525558969832,
+    'nuetau': 0.0,
+    'numutau': 0.0,
+    'nupi': 0.1572076125154916,
+    'epi': 0.1487190805222145,
+    'mupi': 0.028759146393222756,
+    'nupipi': 0.05330798091778008,
+    'epipi': 0.17656146546016332,
+    'mupipi': 0.03184897203877562,
+    'eK': 0.0068757109145544375,
+    'muK': 0.0013072339269646707,
+    'nueta': 0.032595962854183994,
+    'nuetaprime': 0.0013581651189243332,
+    'nuomega': 0.013072339269646707,
+    'nuphi': 0.0,
+    'nuqq': 0.33325976605605834,
+    'eqq': 0.33954127973108333,
+    'muqq': 0.06252652666247899,
+    'tauqq': 0.0,
+    'nuee': 0.06060811843199837,
+    'numumu': 0.02419231618083969,
+    'nutautau': 0.0}
+    """
+    decay_data = HNL_decaywidths(M)
 
-    if observe_photons:
-        return np.array([
-            gamma_see*xe + gamma_dee*(xmu+xtau), #ee
-            gamma_emu*(xe+xmu),  #emu
-            gamma_smumu*xmu + gamma_dmumu*(xe+xtau), #mumu
-            gamma_hNC, #hNC
-            gamma_ehCC*xe, #ehCC
-            gamma_muhCC*xmu, #muhCC
-        ])/Gamma_total
+    def _(*args):
+        if len(args) == 1:
+            x = args[0]
+        else:
+            x = np.array(args)
+        if len(x) == 2:
+            xe, xmu = x
+            xtau = 1 - xe - xmu
+        elif len(x) == 3:
+            xe, xmu, xtau = (x/np.sum(x))
+        
+        if xe < 0 or xmu < 0 or xtau < 0:
+            raise ValueError('Mixing angle ratios x_alpha = U_alpha^2/U^2 must be non-negative')
+        
+        scaling = lambda s: (xe if 'e' in s else 0)+(xmu if 'm' in s else 0)+(xtau if 't' in s else 0)
+
+        output = {key : val[0]*scaling(val[1]) 
+                  for key, val in decay_data.items() }
+        
+        for l in ('e', 'mu', 'tau'):
+            output[f'nu{l}{l}'] = output[f'nu{l}{l}({l})']+output[f'nu{l}{l}(NC)']
+            output.pop(f'nu{l}{l}({l})')
+            output.pop(f'nu{l}{l}(NC)')
+
+        # total_width = np.sum(list(output.values()))
+        leptonic_width = output['3nu']+output['nuee']+output['nuemu']+output['numumu']+output['nuetau']+output['numutau']+output['nutautau']
+        if M > 2:
+            hadronic_width = output['nuqq']+output['eqq']+output['muqq']+output['tauqq']
+        else:
+            hadronic_width = output['nupi']+output['nupipi']+output['nueta']+output['nuetaprime']+output['nuomega']+output['nuphi']+output['epi']+output['epipi']+output['eK']+output['mupi']+output['mupipi']+output['muK']
+
+        total_width = leptonic_width + hadronic_width
+
+        output = {key : val/total_width for key, val in output.items()}
+
+        return output
+
+    return _
+
+
+def HNL_branchings_specific(M:float):
+    """
+Branching ratios for HNLs with mass M in GeV. Same to `HNL_branchings`, but with the branching ratios grouped into the following categories:
+'ee', 'emu', 'mumu', 'NC', 'eCC', 'muCC'.
+
+### Parameters
+    M (float): The mass of the HNL in GeV.
+
+### Returns
+    function(xe, xmu) -> dict
+        function that takes the mixing angles and returns a dictionary of branching ratios. See `HNL_branchings` for more details.
+    """
+    func = HNL_branchings(M)
+    def _(*args):
+        output = func(*args)
+        output_specific = {
+            'ee': output['nuee'],
+            'emu': output['nuemu'],
+            'mumu': output['numumu'],
+            'NC': output['nuqq'] if M > 2 else (output['nupi']+output['nupipi']+output['nueta']+output['nuetaprime']+output['nuomega']+output['nuphi']),
+            'eCC': output['eqq'] if M > 2 else (output['epi']+output['epipi']+output['eK']),
+            'muCC': output['muqq'] if M > 2 else (output['mupi']+output['mupipi']+output['muK']),
+        }
+        return output_specific
     
-    else:
-        return np.array([
-            gamma_see*xe + gamma_dee*(xmu+xtau), #ee
-            gamma_emu*(xe+xmu),  #emu
-            gamma_smumu*xmu + gamma_dmumu*(xe+xtau), #mumu
-            # gamma_hNCnoph, #hNC without photons
-            gamma_ehCC*xe, #ehCC
-            gamma_muhCC*xmu, #muhCC
-        ])/Gamma_total
+    return _
+        
+    
+
 
 
 
 def fake_model_scan(branching_function, 
                reference_point = np.array((0.5, 0.1)), 
-               prior = lambda xe, xmu: np.exp(-(xe-0.2)**2/(0.1)**2),
+               prior = lambda xe, xmu: np.exp(-(xe-0.2)**2/(0.1)**2 - (xmu-0.5)**2/(0.5)**2),
                Nsamples = 100000,
                estimate_only = True,
                exclusion_probability = 0.9,
