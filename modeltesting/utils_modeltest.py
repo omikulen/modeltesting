@@ -1,13 +1,18 @@
 """
-    Utils for distinguishing between models
-    We assume that our observations consist of N channels, parameterized by effective branching ratios br_i and backgrounds b_i. 
-    The theoretical predictions for the number of events in each channel are 
-        N_i = N*br_i + b_i, 
-    where N is the total number of events.
-    
-    Given a real model br1_i, we are interested how many events N we need to exclude a tested model br2_i
-    More specifically, at what N the probability to exclude the tested model at some confidence level
-    is not less than some exclusion probability.
+## Overview
+
+The module provides utility functions for distinguishing between different models in particle physics experiments. The module assumes that observations consist of \( N \) channels, each parameterized by effective branching ratios \( \text{br}_i \) and backgrounds \( b_i \).
+
+The theoretical predictions for the number of events in each channel are given by:
+
+\[
+N_i = N \times \text{br}_i + b_i
+\]
+
+where \( N \) is the total number of events.
+
+Given a real model \( \text{br1}_i \), the utility functions aim to answer how many events \( N \) are required to exclude a tested model \( \text{br2}_i \). Specifically, the module calculates at what \( N \) the probability to exclude the tested model becomes significant.
+
 """
 
 
