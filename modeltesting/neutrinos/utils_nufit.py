@@ -286,3 +286,37 @@ def CasasIbarra_3(*args, hierarchy = None, **kwargs):
     Vm = 1j*(V_PMNS@(np.sqrt(mnu))@RHNL)
 
     return np.square(Vm)
+
+
+def mixing_ratios_2(*args, **kwargs):
+    """
+    Calculates the mixing ratios x_alpha = U_alpha^2/U^2 (with U_alpha^2 = sum_I U^2_{alpha I}) for two additional sterile neutrinos I=1,2.
+    If reomega/imomega are not specified, the function assumes imomega -> +inf limit, equivalent to imomega -> -inf and eta -> eta + pi.
+    
+    ### Parameters:
+    -----------
+    Only required parameters are listed here. For other parameters, see :func:`CasasIbarra_2`.
+    eta : float
+        Neutrino Majorana phase in rad.
+    
+    ### Returns:
+    --------
+    np.ndarray
+        Mixing ratios x_alpha = U_alpha^2/U^2, with shape (3,).
+
+    ### Example:
+    --------
+    >>> mixing_ratios_2(np.pi/2, hierarchy = 'i')
+    array([0.93690813, 0.02181914, 0.04127273])
+    """
+    if args and isinstance(args[0], dict):
+        kwargs.update(args[0])
+    elif len(args) == 1 and isinstance(args[0], float):
+        kwargs['eta'] = args[0]
+    if 'eta' not in kwargs:
+        raise ValueError('Missing required parameter. eta must be specified.')
+    kwargs['imomega'] = kwargs.get('imomega', 10)
+    kwargs['reomega'] = kwargs.get('reomega', 0)
+    result = CasasIbarra_2(**kwargs)
+    result = np.sum(np.abs(result), axis = 1)
+    return result/np.sum(result)
