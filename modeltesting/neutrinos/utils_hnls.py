@@ -354,7 +354,7 @@ Then we rescan over these model to find the exact value of the number of events.
     # the `estimate_only` uses find_estimated_NrNf to find the Nr that gives the desired exclusion probability
     for i, xe in enumerate(xe_grid):
         for j, xmu in enumerate(xmu_grid):
-            pr = prior_grid[i,j]
+            pr = prior_grid[j,i]
 
             # the neutrino oscillation region is where the prior is above the exclusion limit
             if pr > 1 - exclusion_limit:
@@ -395,7 +395,7 @@ Then we rescan over these model to find the exact value of the number of events.
         for i, xe in tqdm(enumerate(xe_grid)):
             for j, xmu in enumerate(xmu_grid):
                 if Nreal_grid[j, i] > 0.7*(estimated_Nreal - minval) + minval:
-                    pr = prior_grid[i,j]
+                    pr = prior_grid[j,i]
 
                     if pr > 1 - exclusion_limit:
                         if np.linalg.norm(np.array((xe, xmu))-reference_point) > 0.01 and xe+xmu <= 1.0:                       
