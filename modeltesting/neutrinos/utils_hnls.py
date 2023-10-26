@@ -359,8 +359,13 @@ Then we rescan over these model to find the exact value of the number of events.
             # the neutrino oscillation region is where the prior is above the exclusion limit
             if pr > 1 - exclusion_limit:
                 if np.linalg.norm(np.array((xe, xmu))-reference_point) > 0.01 and xe+xmu <= 1.0:
-                    Nreal, Ntested = find_estimated_Nreal(branching_function(reference_point),
-                                                    branching_function((xe, xmu)), 
+                    br_real = branching_function(reference_point)
+                    br_tested = branching_function((xe, xmu))
+                    if type(br_real) == dict:
+                        br_real = np.array(list(br_real.values()))
+                        br_tested = np.array(list(br_tested.values()))
+                    Nreal, Ntested = find_estimated_Nreal(branchings_real=br_real,
+                                                    branchings_tested=br_tested, 
                                                     CL= 1 - (1 - exclusion_limit)/pr)
                     
                     Nreal_grid[j, i] = Nreal
@@ -398,9 +403,14 @@ Then we rescan over these model to find the exact value of the number of events.
                     pr = prior_grid[j,i]
 
                     if pr > 1 - exclusion_limit:
-                        if np.linalg.norm(np.array((xe, xmu))-reference_point) > 0.01 and xe+xmu <= 1.0:                       
-                            Nreal, Ntested, prob = find_optimal_Nreal(branchings_real = branching_function(reference_point),
-                                                branchings_tested = branching_function((xe, xmu)),
+                        if np.linalg.norm(np.array((xe, xmu))-reference_point) > 0.01 and xe+xmu <= 1.0:
+                            br_real = branching_function(reference_point)
+                            br_tested = branching_function((xe, xmu))
+                            if type(br_real) == dict:
+                                br_real = np.array(list(br_real.values()))
+                                br_tested = np.array(list(br_tested.values()))               
+                            Nreal, Ntested, prob = find_optimal_Nreal(branchings_real = br_real,
+                                                branchings_tested = br_tested,
                                                 exclusion_probability = exclusion_probability,
                                                 CL = max(0, 1 - (1 - exclusion_limit)/pr),
                                                 Nsamples = Nsamples, convergence_rate=0.5,
@@ -412,7 +422,7 @@ Then we rescan over these model to find the exact value of the number of events.
                                 critical_point_data["Ntested"] = Ntested
                                 critical_point_data["experimental_CL"] = max(0, 1 - (1 - exclusion_limit)/pr)
                                 critical_point_data["neutrino_prior"] = pr
-                                critical_point_data["chi2"] = np.sum((Ntested*branching_function((xe, xmu)) - Nreal*branching_function(reference_point))**2/(Ntested*branching_function((xe, xmu)) + backgrounds + 1e-10))
+                                critical_point_data["chi2"] = np.sum((Ntested*br_tested - Nreal*br_real)**2/(Ntested*br_tested + backgrounds + 1e-10))
                                 critical_point_data["exclusion_probability"] = prob
 
     if logs:
