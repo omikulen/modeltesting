@@ -396,8 +396,7 @@ Then we rescan over these model to find the exact value of the number of events.
         }
 
 
-        from tqdm import tqdm
-        for i, xe in tqdm(enumerate(xe_grid)):
+        for i, xe in enumerate(xe_grid):
             for j, xmu in enumerate(xmu_grid):
                 if Nreal_grid[j, i] > 0.7*(estimated_Nreal - minval) + minval:
                     pr = prior_grid[j,i]
