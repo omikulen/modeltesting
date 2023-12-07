@@ -172,7 +172,7 @@ def compare_two_models(N_real:float,
                        branchings_tested:np.ndarray, 
                        backgrounds = None, 
                        CL = 0.9, 
-                       Nsamples = 1000):
+                       Nsamples = 100000):
     """
 N_real - total expected number of events in the real model
 branchings_real - branching ratios in the real model
@@ -238,7 +238,7 @@ Returns: (probability, N_f_bestfit)
 
 
 
-def find_estimated_Nreal(branchings_real, 
+def find_estimated_N_real(branchings_real, 
                          branchings_tested, 
                          backgrounds = None, 
                          CL = 0.9, 
@@ -275,7 +275,7 @@ def find_estimated_Nreal(branchings_real,
         
     Examples:
     ---------
-    >>> find_estimated_Nreal([0.4, 0.6], [0.1,  0.1], backgrounds=[50, 100])
+    >>> find_estimated_N_real([0.4, 0.6], [0.1,  0.1], backgrounds=[50, 100])
     (94.96566842987566, 474.8283421493783)
     """
 
@@ -335,7 +335,7 @@ def _fromfile(path):
         - 'bkg': Background in each channel (optional, default is 0)
         - 'eff1': Efficiencies in each channel for the real model (optional, default is 1)
         - 'eff2': Efficiencies in each channel for the tested model (optional, default is 1)
-        - 'names': Channel labels (optional)
+        - 'channel_names': Channel labels (optional)
         
     Returns:
     --------
@@ -344,7 +344,7 @@ def _fromfile(path):
         - 'branchings_real': Calculated as br1 * eff1
         - 'branchings_tested': Calculated as br2 * eff2
         - 'backgrounds': Read from the 'bkg' column
-        - 'names': Names of the channels if provided
+        - 'channel_names': Names of the channels if provided
         
     Example File Format:
     --------------------
@@ -381,7 +381,7 @@ def _fromfile(path):
 
     headers = data[0]
     try:
-        name_index = np.where(headers == 'names')[0][0]
+        name_index = np.where(headers == 'channel_names')[0][0]
         names = data[1:, name_index]
         data = np.delete(data, name_index, axis = 1)
         headers = np.delete(headers, name_index)
@@ -421,14 +421,14 @@ def _fromfile(path):
         'branchings_real': branchings_real,
         'branchings_tested': branchings_tested,
         'backgrounds': backgrounds,
-        'names': names
+        'channel_names': names
     }
 
     return output
 
 
 
-def find_optimal_Nreal(
+def find_optimal_N_real(
     branchings_real = None, 
     branchings_tested = None,    
     backgrounds = None,
@@ -482,10 +482,10 @@ def find_optimal_Nreal(
         
     Example:
     --------
-    >>> find_optimal_Nreal(branchings_real=[1.0, 0.5], branchings_tested=[0.5, 1.0])
+    >>> find_optimal_N_real(branchings_real=[1.0, 0.5], branchings_tested=[0.5, 1.0])
     (16.671661862408424, 19.84366716420989, 0.8935)
 
-    >>> find_optimal_Nreal(branchings_real=[1.0, 0.5], branchings_tested=[0.5, 1.0], backgrounds=[100, 200])
+    >>> find_optimal_N_real(branchings_real=[1.0, 0.5], branchings_tested=[0.5, 1.0], backgrounds=[100, 200])
     (65.44228924615766, 64.83965225789879, 0.9029)
     
     """
@@ -512,7 +512,7 @@ def find_optimal_Nreal(
 
 
     # starting point of the scan
-    current_Nreal, _ = find_estimated_Nreal(branchings_real, branchings_tested, backgrounds = backgrounds, CL = CL)
+    current_Nreal, _ = find_estimated_N_real(branchings_real, branchings_tested, backgrounds = backgrounds, CL = CL)
     current_probability, current_Ntested = compare_two_models(
             current_Nreal, branchings_real, branchings_tested, backgrounds = backgrounds,
             CL = CL, Nsamples = Nsamples)
@@ -537,7 +537,7 @@ def find_optimal_Nreal(
     return best_Nreal, best_Ntested, best_probability
 
 
-def barplot(ax, Nreal, Ntested, 
+def barplot(ax, N_real, N_tested, 
     branchings_real = None, 
     branchings_tested = None, 
     path = None, **kwargs):
@@ -550,10 +550,10 @@ def barplot(ax, Nreal, Ntested,
     ax : matplotlib axis object
         The axis on which to plot the bar chart.
 
-    Nreal : float or int
+    N_real : float or int
         The N_real value.
 
-    Ntested : float or int
+    N_tested : float or int
         The N_tested value
     
     branchings_real : array-like, optional
@@ -567,7 +567,7 @@ def barplot(ax, Nreal, Ntested,
         
     **kwargs : dict, optional
         Additional keyword arguments for customization. Possible keys are:
-        - 'names': Names of the channels for labeling
+        - 'channel_names': Names of the channels for labeling
         - 'backgrounds': Backgrounds in each channel
 
     Example:
@@ -589,8 +589,8 @@ def barplot(ax, Nreal, Ntested,
     else:
         branchings_real = np.array(branchings_real, dtype = float)
         branchings_tested = np.array(branchings_tested, dtype = float)
-        if 'names' in kwargs:
-            channel_names = kwargs['names']
+        if 'channel_names' in kwargs:
+            channel_names = kwargs['channel_names']
         backgrounds = kwargs.get('backgrounds', None)
     if backgrounds is None:
         backgrounds = np.zeros_like(branchings_real)
@@ -600,11 +600,11 @@ def barplot(ax, Nreal, Ntested,
     
 
     if channel_names is None:
-        channel_names = [f'{i}' for i in range(len(branchings_real))]
+        channel_names = [f'Channel {i}' for i in range(len(branchings_real))]
 
     # Loop over each pair of bars
 
-    for i, (b1, b2, b3) in enumerate(zip(Nreal*branchings_real, Ntested*branchings_tested, backgrounds)):
+    for i, (b1, b2, b3) in enumerate(zip(N_real*branchings_real, N_tested*branchings_tested, backgrounds)):
         # Plot the taller bar first
         if b1 > b2:
             ax.bar(channel_names[i], b1, color='blue', alpha=0.4, edgecolor='black', linewidth=1.5, label='_nolegend_', bottom=b3)
@@ -614,8 +614,8 @@ def barplot(ax, Nreal, Ntested,
             ax.bar(channel_names[i], b1, color='blue', alpha=0.4, edgecolor='black', linewidth=1.5, label='_nolegend_', bottom=b3)
         ax.bar(channel_names[i], b3, color='green', alpha=0.4, edgecolor='black', linewidth=1.5, label='_nolegend_')
 
-    ax.bar(0, 0, color='blue', alpha=0.6, edgecolor='black', linewidth=1.5, label='Real signal')
-    ax.bar(0, 0, color='red', alpha=0.6, edgecolor='black', linewidth=1.5, label='Tested signal')
+    ax.bar(0, 0, color='blue', alpha=0.6, edgecolor='black', linewidth=1.5, label='Real model')
+    ax.bar(0, 0, color='red', alpha=0.6, edgecolor='black', linewidth=1.5, label='Tested model')
     if np.all(backgrounds!=np.zeros_like(backgrounds)):
         ax.bar(0, 0, color='green', alpha=0.6, edgecolor='black', linewidth=1.5, label='Background')
 
@@ -624,10 +624,11 @@ def barplot(ax, Nreal, Ntested,
     ax.legend(loc = 'upper left', fontsize=18)
     ax.tick_params(labelsize=18)
     ax.tick_params(labelsize=18)
+    ax.set_ylabel('Counts', fontsize=18)
 
-    chi2 = np.sum((Nreal*branchings_real - Ntested*branchings_tested)**2/(Ntested*branchings_tested + backgrounds), axis = 0)
+    chi2 = np.sum((N_real*branchings_real - N_tested*branchings_tested)**2/(N_tested*branchings_tested + backgrounds), axis = 0)
 
-    ax.set_title(f'Comparison of two models $(N_{{real}} = {Nreal:.1f}, N_{{tested}} = {Ntested:.1f})' + '$\n$\chi^2_{th} '+f'= {chi2:.1f}$', fontsize=18)
+    ax.set_title(f'Comparison of two models $(N_{{real}} = {N_real:.1f}, N_{{tested}} = {N_tested:.1f})' + '$\n$\chi^2_{th} '+f'= {chi2:.1f}$', fontsize=18)
  
 
 
