@@ -12,7 +12,7 @@
 
 import numpy as np
 from pkg_resources import resource_filename
-from ..utils_modeltest import find_optimal_Nreal, find_estimated_Nreal
+from ..utils_modeltest import find_optimal_N_real, find_estimated_N_real
 from .utils_nufit import _h
 
 
@@ -297,10 +297,10 @@ Branching ratios for HNLs with mass M in GeV. Same to `HNL_branchings`, but with
 
 
 
-def fake_model_scan(branching_function, 
+def model_scan(branching_function, 
                reference_point = np.array((0.5, 0.1)), 
                prior = lambda xe, xmu: np.exp(-(xe-0.2)**2/(0.1)**2 - (xmu-0.5)**2/(0.5)**2),
-               Nsamples = 100000,
+               Nsamples = 10000,
                estimate_only = True,
                exclusion_probability = 0.9,
                exclusion_limit = 0.9,
@@ -352,35 +352,35 @@ Then we rescan over these model to find the exact value of the number of events.
     prior_grid = prior(xe_grid, xmu_grid)
 
     critical_point_data = {
-        "Nreal" : 0,
+        "N_real" : 0,
         "tested_point" : (0, 0),
-        "Ntested" : 0,
+        "N_tested" : 0,
         "estimate" : True,
         "experimental_CL" : 0,
         "neutrino_prior" : 0,
     }
     
-    # the `estimate_only` uses find_estimated_NrNf to find the Nr that gives the desired exclusion probability
+    # the `estimate_only` uses find_estimated_N_rN_f to find the Nr that gives the desired exclusion probability
     for i, (xe, xmu, pr) in enumerate(zip(xe_grid, xmu_grid, prior_grid)):
 
 
         # the neutrino oscillation region is where the prior is above the exclusion limit
         if pr > 1 - exclusion_limit:
-            if np.linalg.norm(np.array((xe, xmu))-reference_point) > 0.01 and xe+xmu <= 1.0:
+            if np.linalg.norm(np.array((xe, xmu))-reference_point) > 0.01 and xe+xmu < 1:
                 br_real = branching_function(reference_point)
                 br_tested = branching_function((xe, xmu))
                 if type(br_real) == dict:
                     br_real = np.array(list(br_real.values()))
                     br_tested = np.array(list(br_tested.values()))
-                Nreal, Ntested = find_estimated_Nreal(branchings_real=br_real,
+                Nreal, Ntested = find_estimated_N_real(branchings_real=br_real,
                                                 branchings_tested=br_tested, 
                                                 CL= 1 - (1 - exclusion_limit)/pr)
                 
                 Nreal_grid[i] = Nreal
-                if Nreal > critical_point_data["Nreal"]:
-                    critical_point_data["Nreal"] = Nreal
+                if Nreal > critical_point_data["N_real"]:
+                    critical_point_data["N_real"] = Nreal
                     critical_point_data["tested_point"] = (xe, xmu)
-                    critical_point_data["Ntested"] = Ntested
+                    critical_point_data["N_tested"] = Ntested
                     critical_point_data["experimental_CL"] = max(0, 1 - (1 - exclusion_limit)/pr)
                     critical_point_data["neutrino_prior"] = pr
 
@@ -392,13 +392,14 @@ Then we rescan over these model to find the exact value of the number of events.
 
     if not estimate_only:
         critical_point_data["estimate"] = False
-        estimated_Nreal = critical_point_data["Nreal"]
+        estimated_Nreal = critical_point_data["N_real"]
         minval = np.min(Nreal_grid[Nreal_grid > 0])
         # if not estimate_only, we rescan points with largest estimated Nr (>0.7 of max Nr) to find the exact value
         critical_point_data = {
-            "Nreal" : 0,
+            "N_real" : 0,
             "tested_point" : (0, 0),
-            "Ntested" : 0,
+            "N_tested" : 0,
+            "estimate" : False,
             "experimental_CL" : 0,
             "neutrino_prior" : 0,
         }
@@ -408,34 +409,34 @@ Then we rescan over these model to find the exact value of the number of events.
             if Nreal_grid[i] > 0.7*(estimated_Nreal - minval) + minval:
 
                 if pr > 1 - exclusion_limit:
-                    if np.linalg.norm(np.array((xe, xmu))-reference_point) > 0.01 and xe+xmu <= 1.0:
+                    if np.linalg.norm(np.array((xe, xmu))-reference_point) > 0.01 and xe+xmu < 1:
                         br_real = branching_function(reference_point)
                         br_tested = branching_function((xe, xmu))
                         if type(br_real) == dict:
                             br_real = np.array(list(br_real.values()))
                             br_tested = np.array(list(br_tested.values()))               
-                        Nreal, Ntested, prob = find_optimal_Nreal(branchings_real = br_real,
+                        Nreal, Ntested, prob = find_optimal_N_real(branchings_real = br_real,
                                             branchings_tested = br_tested,
                                             exclusion_probability = exclusion_probability,
                                             CL = max(0, 1 - (1 - exclusion_limit)/pr),
                                             Nsamples = Nsamples, convergence_rate=0.5,
                                             backgrounds = backgrounds,)
                         
-                        if Nreal > critical_point_data["Nreal"]:
-                            critical_point_data["Nreal"] = Nreal
+                        if Nreal > critical_point_data["N_real"]:
+                            critical_point_data["N_real"] = Nreal
                             critical_point_data["tested_point"] = (xe, xmu)
-                            critical_point_data["Ntested"] = Ntested
+                            critical_point_data["N_tested"] = Ntested
                             critical_point_data["experimental_CL"] = max(0, 1 - (1 - exclusion_limit)/pr)
                             critical_point_data["neutrino_prior"] = pr
                             critical_point_data["chi2"] = np.sum((Ntested*br_tested - Nreal*br_real)**2/(Ntested*br_tested + backgrounds + 1e-10))
                             critical_point_data["exclusion_probability"] = prob
 
     if logs:
-        print(f'The required number of events to exclude {reference_point} = {critical_point_data["Nreal"]}')
-        print(f'The best-fit model is {critical_point_data["tested_point"]} with Nr = {critical_point_data["Nreal"]} and Nf = {critical_point_data["Ntested"]}')
+        print(f'The required number of events to exclude {reference_point} = {critical_point_data["N_real"]}')
+        print(f'The best-fit model is {critical_point_data["tested_point"]} with N_real = {critical_point_data["N_real"]} and N_tested = {critical_point_data["N_tested"]}')
         print(f'The required experimental CL = {critical_point_data["experimental_CL"]}, prior = {critical_point_data["neutrino_prior"]}\n')
     
-    return critical_point_data, reference_point
+    return critical_point_data
 
 
 
@@ -459,5 +460,5 @@ def real_model_scan(branching_function,
 
     results = []
     for reference_point in reference_points:
-        results.append(fake_model_scan(branching_function,reference_point=reference_point,prior=prior,Nsamples=Nsamples,estimate_only=estimate_only,exclusion_probability=exclusion_probability,exclusion_limit=exclusion_limit,backgrounds=backgrounds,logs=logs))
+        results.append(model_scan(branching_function,reference_point=reference_point,prior=prior,Nsamples=Nsamples,estimate_only=estimate_only,exclusion_probability=exclusion_probability,exclusion_limit=exclusion_limit,backgrounds=backgrounds,logs=logs))
     return results
