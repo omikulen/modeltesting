@@ -1,5 +1,5 @@
 # modeltesting
-Module for estimating sensitivity for distinguishing models of new physics at Intensity Frontier experiments. If you use it, please cite [arXiv:2312.00659](https://arxiv.org/abs/2312.00659) and [***].
+Module for estimating sensitivity for distinguishing models of new physics at Intensity Frontier experiments. If you use it, please cite [arXiv:2312.00659](https://arxiv.org/abs/2312.00659) and [arXiv:2312.05163](https://arxiv.org/abs/2312.05163).
 
 ## Installation
 
